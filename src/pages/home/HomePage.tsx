@@ -22,7 +22,7 @@ import {
   Linkedin,
 } from 'lucide-react';
 import { BackgroundGrid } from './BackgroundGrid';
-import FeatureCard from './Featurecard';
+import FeatureCard from './FeatureCard';
 
 interface ContactFormData {
   name: string;
