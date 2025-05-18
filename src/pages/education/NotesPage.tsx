@@ -51,7 +51,7 @@ const NotesPage: React.FC = () => {
 
   return (
     <Layout>
-      <div className="h-[calc(100vh-4rem)] flex">
+      <div className=" pt-16 h-[calc(100vh-4rem)] flex">
         {/* Sidebar */}
         <div className="w-80 border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
           <div className="p-4">

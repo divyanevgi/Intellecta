@@ -80,7 +80,7 @@ const QuizPage: React.FC = () => {
   if (showResults) {
     return (
       <Layout>
-        <div className="max-w-2xl mx-auto py-8 px-4">
+        <div className="max-w-2xl mx-auto py-8 px-4 ">
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-8 text-center">
             <div className="mb-8">
               <Award className="w-16 h-16 mx-auto text-primary-600 dark:text-primary-400" />
@@ -113,7 +113,7 @@ const QuizPage: React.FC = () => {
 
   return (
     <Layout>
-      <div className="max-w-2xl mx-auto py-8 px-4">
+      <div className="max-w-2xl mx-auto py-8 px-4  pt-16">
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-8">
           <div className="flex items-center justify-between mb-8">
             <div className="flex items-center">

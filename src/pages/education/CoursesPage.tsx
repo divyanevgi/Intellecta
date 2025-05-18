@@ -138,7 +138,7 @@ const CoursesPage: React.FC = () => {
 
   return (
     <Layout>
-      <div className="max-w-7xl mx-auto py-8 px-4">
+      <div className=" max-w-7xl mx-auto py-8 px-4 pt-16">
         <div className="flex justify-between items-center mb-8">
           <div>
             <h1 className="text-2xl font-bold text-gray-900 dark:text-white">

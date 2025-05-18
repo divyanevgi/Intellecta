@@ -32,7 +32,10 @@ const Navbar: React.FC = () => {
   };
 
   return (
-    <nav className="ml-60 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
+    <nav
+  className="fixed top-0 z-50 h-16 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700"
+  style={{ marginLeft: '240px', width: 'calc(100% - 240px)' }}
+>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16">
           <div className="flex items-center md:hidden">
