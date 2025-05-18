@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 
 // Common Types
 export interface User {
@@ -51,6 +52,7 @@ export interface Note {
 
 // Task Types
 export interface Task {
+  estimatedPomodoros: ReactNode;
   id: string;
   userId: string;
   title: string;
@@ -61,6 +63,7 @@ export interface Task {
   category: string;
   pomodoros: number;
   pomodorosCompleted: number;
+  tags?: string[];
 }
 
 // Pomodoro Types

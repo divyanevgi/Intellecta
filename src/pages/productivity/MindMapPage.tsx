@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import Layout from '../../components/layout/Layout';
 import { motion } from 'framer-motion';
-import { Plus, Minus, Save } from 'lucide-react';
+import { Plus, Minus, Save, Check } from 'lucide-react';
+import useLocalStorage from '../../hooks/UseLocalStorage';
 
 interface Node {
   id: string;
@@ -12,7 +13,7 @@ interface Node {
 }
 
 const MindMapPage: React.FC = () => {
-  const [nodes, setNodes] = useState<Node[]>([
+  const [nodes, setNodes] = useLocalStorage<Node[]>('mindmap-nodes', [
     {
       id: '1',
       text: 'Main Topic',
@@ -36,6 +37,8 @@ const MindMapPage: React.FC = () => {
       y: 0
     }
   ]);
+  
+  const [savedSuccessfully, setSavedSuccessfully] = useState(false);
 
   const addNode = (parentId: string) => {
     const newNode: Node = {
@@ -64,7 +67,18 @@ const MindMapPage: React.FC = () => {
       return updateNodes(prevNodes);
     });
   };
-
+  
+  const saveMap = () => {
+    // The map is already saved through useLocalStorage
+    // This is just to show a visual confirmation to the user
+    setSavedSuccessfully(true);
+    
+    // Reset the saved state after 2 seconds
+    setTimeout(() => {
+      setSavedSuccessfully(false);
+    }, 2000);
+  };
+  
   const renderNode = (node: Node, depth: number = 0) => {
     return (
       <motion.div
@@ -104,7 +118,7 @@ const MindMapPage: React.FC = () => {
           <div className="absolute -right-8 top-1/2 transform -translate-y-1/2 flex flex-col gap-2">
             <button
               onClick={() => addNode(node.id)}
-              className="p-1 bg-blue-600 text-white rounded-full hover:bg-blue-700"
+              className="p-1 bg-blue-600 text-white rounded-full hover:bg-blue-700 transition-all hover:scale-110"
             >
               <Plus className="w-4 h-4" />
             </button>
@@ -122,7 +136,7 @@ const MindMapPage: React.FC = () => {
                     return removeNode(prevNodes);
                   });
                 }}
-                className="p-1 bg-red-600 text-white rounded-full hover:bg-red-700"
+                className="p-1 bg-red-600 text-white rounded-full hover:bg-red-700 transition-all hover:scale-110"
               >
                 <Minus className="w-4 h-4" />
               </button>
@@ -144,9 +158,21 @@ const MindMapPage: React.FC = () => {
       <div className="p-6">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-2xl font-bold text-gray-900">Mind Map</h1>
-          <button className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
-            <Save className="w-5 h-5 mr-2" />
-            Save Map
+          <button 
+            onClick={saveMap}
+            className={`flex items-center px-4 py-2 ${savedSuccessfully ? 'bg-green-600 hover:bg-green-700' : 'bg-blue-600 hover:bg-blue-700'} text-white rounded-lg transition-colors`}
+          >
+            {savedSuccessfully ? (
+              <>
+                <Check className="w-5 h-5 mr-2" />
+                Saved!
+              </>
+            ) : (
+              <>
+                <Save className="w-5 h-5 mr-2" />
+                Save Map
+              </>
+            )}
           </button>
         </div>
 

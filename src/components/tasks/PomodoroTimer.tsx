@@ -8,116 +8,128 @@ interface PomodoroTimerProps {
   onClearActiveTask: () => void;
 }
 
-type TimerState = 'pomodoro' | 'shortBreak' | 'longBreak';
+const POMODORO_TIME = 25 * 60; // 25 minutes in seconds
+const SHORT_BREAK_TIME = 5 * 60; // 5 minutes in seconds
+const LONG_BREAK_TIME = 15 * 60; // 15 minutes in seconds
 
-const TIMER_SETTINGS = {
-  pomodoro: 25 * 60, // 25 minutes
-  shortBreak: 5 * 60, // 5 minutes
-  longBreak: 15 * 60, // 15 minutes
-};
+type TimerMode = 'pomodoro' | 'shortBreak' | 'longBreak';
 
 const PomodoroTimer: React.FC<PomodoroTimerProps> = ({ 
-  activeTask, 
+  activeTask,
   onPomodoroComplete,
   onClearActiveTask
 }) => {
-  const [timerState, setTimerState] = useState<TimerState>('pomodoro');
-  const [timeRemaining, setTimeRemaining] = useState(TIMER_SETTINGS.pomodoro);
+  const [timeLeft, setTimeLeft] = useState(POMODORO_TIME);
   const [isRunning, setIsRunning] = useState(false);
-  const [pomodoroCount, setPomodoroCount] = useState(0);
-  const intervalRef = useRef<number | null>(null);
+  const [mode, setMode] = useState<TimerMode>('pomodoro');
+  const [completedPomodoros, setCompletedPomodoros] = useState(0);
   
-  // Reset timer when changing timer state
-  useEffect(() => {
-    setTimeRemaining(TIMER_SETTINGS[timerState]);
-    setIsRunning(false);
-    clearInterval(intervalRef.current || undefined);
-  }, [timerState]);
+  const timerRef = useRef<number | null>(null);
   
-  // Reset timer when active task changes
+  // Reset timer when mode changes
   useEffect(() => {
-    if (activeTask) {
-      setTimerState('pomodoro');
-      setTimeRemaining(TIMER_SETTINGS.pomodoro);
-      setIsRunning(false);
-      clearInterval(intervalRef.current || undefined);
-    }
-  }, [activeTask]);
+    resetTimer();
+  }, [mode]);
+  
+  // Clean up timer on unmount
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+      }
+    };
+  }, []);
   
   const startTimer = () => {
-    if (!isRunning) {
-      setIsRunning(true);
-      intervalRef.current = window.setInterval(() => {
-        setTimeRemaining(prev => {
-          if (prev <= 1) {
-            clearInterval(intervalRef.current || undefined);
-            handleTimerComplete();
-            return 0;
-          }
-          return prev - 1;
-        });
-      }, 1000);
-    }
+    setIsRunning(true);
+    timerRef.current = window.setInterval(() => {
+      setTimeLeft(prev => {
+        if (prev <= 1) {
+          handleTimerComplete();
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
   };
   
   const pauseTimer = () => {
-    clearInterval(intervalRef.current || undefined);
     setIsRunning(false);
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
   };
   
   const resetTimer = () => {
-    clearInterval(intervalRef.current || undefined);
-    setTimeRemaining(TIMER_SETTINGS[timerState]);
-    setIsRunning(false);
+    pauseTimer();
+    
+    switch (mode) {
+      case 'pomodoro':
+        setTimeLeft(POMODORO_TIME);
+        break;
+      case 'shortBreak':
+        setTimeLeft(SHORT_BREAK_TIME);
+        break;
+      case 'longBreak':
+        setTimeLeft(LONG_BREAK_TIME);
+        break;
+    }
   };
   
   const handleTimerComplete = () => {
-    // Play sound
+    // Play notification sound
     const audio = new Audio('/notification.mp3');
-    audio.play().catch(() => console.log('Audio play failed - user interaction required'));
+    audio.play().catch(e => console.log('Audio play failed:', e));
     
-    // Show notification
-    if (Notification.permission === 'granted') {
-      new Notification('Timer Complete', {
-        body: timerState === 'pomodoro' 
-          ? 'Time for a break!' 
-          : 'Break is over. Back to work!',
-      });
-    }
+    pauseTimer();
     
-    if (timerState === 'pomodoro') {
-      // Increment pomodoro count
-      const newCount = pomodoroCount + 1;
-      setPomodoroCount(newCount);
+    if (mode === 'pomodoro') {
+      const newCompletedCount = completedPomodoros + 1;
+      setCompletedPomodoros(newCompletedCount);
       
-      // Call the onPomodoroComplete callback
-      onPomodoroComplete();
+      // Call the completion handler for the active task
+      if (activeTask) {
+        onPomodoroComplete();
+      }
       
-      // Determine next timer state
-      if (newCount % 4 === 0) {
-        setTimerState('longBreak');
+      // After every 4 pomodoros, take a long break
+      if (newCompletedCount % 4 === 0) {
+        setMode('longBreak');
       } else {
-        setTimerState('shortBreak');
+        setMode('shortBreak');
       }
     } else {
-      // After break, go back to pomodoro
-      setTimerState('pomodoro');
+      // If we're on a break, switch back to pomodoro
+      setMode('pomodoro');
     }
   };
   
-  const formatTime = (seconds: number) => {
+  const formatTime = (seconds: number): string => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
   
-  const getProgressPercentage = () => {
-    const total = TIMER_SETTINGS[timerState];
-    return ((total - timeRemaining) / total) * 100;
+  const getProgressPercent = (): number => {
+    let totalTime;
+    switch (mode) {
+      case 'pomodoro':
+        totalTime = POMODORO_TIME;
+        break;
+      case 'shortBreak':
+        totalTime = SHORT_BREAK_TIME;
+        break;
+      case 'longBreak':
+        totalTime = LONG_BREAK_TIME;
+        break;
+    }
+    
+    return ((totalTime - timeLeft) / totalTime) * 100;
   };
   
-  const getTimerColor = () => {
-    switch (timerState) {
+  const getModeColor = (): string => {
+    switch (mode) {
       case 'pomodoro':
         return 'text-red-600 dark:text-red-500';
       case 'shortBreak':
@@ -127,136 +139,147 @@ const PomodoroTimer: React.FC<PomodoroTimerProps> = ({
     }
   };
   
+  const getCircleColor = (): string => {
+    switch (mode) {
+      case 'pomodoro':
+        return 'stroke-red-600 dark:stroke-red-500';
+      case 'shortBreak':
+        return 'stroke-green-600 dark:stroke-green-500';
+      case 'longBreak':
+        return 'stroke-blue-600 dark:stroke-blue-500';
+    }
+  };
+  
   return (
     <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 animate-fade-in">
-      <h2 className="text-lg font-medium text-gray-900 dark:text-white mb-4">Pomodoro Timer</h2>
-      
-      {activeTask ? (
-        <div className="mb-4 p-3 bg-primary-50 dark:bg-primary-900/20 rounded-lg border border-primary-200 dark:border-primary-800 flex justify-between items-start">
-          <div>
-            <p className="text-sm font-medium text-gray-900 dark:text-white">Current Task</p>
-            <p className="text-sm text-gray-600 dark:text-gray-300">{activeTask.title}</p>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-              {activeTask.pomodorosCompleted}/{activeTask.pomodoros} pomodoros
-            </p>
-          </div>
+      <div className="flex justify-between items-center mb-6">
+        <h2 className="text-lg font-medium text-gray-900 dark:text-white">Pomodoro Timer</h2>
+        <div className="flex items-center space-x-2">
           <button 
-            onClick={onClearActiveTask}
-            className="p-1 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+            onClick={() => setMode('pomodoro')}
+            className={`px-3 py-1 text-xs font-medium rounded-md ${
+              mode === 'pomodoro' 
+                ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400' 
+                : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'
+            }`}
           >
-            <X size={16} />
+            Focus
+          </button>
+          <button 
+            onClick={() => setMode('shortBreak')}
+            className={`px-3 py-1 text-xs font-medium rounded-md ${
+              mode === 'shortBreak' 
+                ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' 
+                : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'
+            }`}
+          >
+            Short Break
+          </button>
+          <button 
+            onClick={() => setMode('longBreak')}
+            className={`px-3 py-1 text-xs font-medium rounded-md ${
+              mode === 'longBreak' 
+                ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400' 
+                : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'
+            }`}
+          >
+            Long Break
           </button>
         </div>
+      </div>
+      
+      <div className="flex flex-col items-center mb-6">
+        <div className="relative w-48 h-48">
+          {/* Background circle */}
+          <svg className="w-full h-full rotate-[-90deg]" viewBox="0 0 100 100">
+            <circle 
+              cx="50" 
+              cy="50" 
+              r="45" 
+              fill="none" 
+              stroke="#e6e6e6" 
+              strokeWidth="5"
+            />
+            {/* Progress circle */}
+            <circle 
+              cx="50" 
+              cy="50" 
+              r="45" 
+              fill="none" 
+              className={getCircleColor()}
+              strokeWidth="5"
+              strokeDasharray="283"
+              strokeDashoffset={283 - (283 * getProgressPercent() / 100)}
+              strokeLinecap="round"
+              style={{ transition: 'stroke-dashoffset 0.5s ease-in-out' }}
+            />
+          </svg>
+          <div className="absolute inset-0 flex flex-col items-center justify-center">
+            <span className={`text-4xl font-bold ${getModeColor()}`}>
+              {formatTime(timeLeft)}
+            </span>
+            <span className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+              {mode === 'pomodoro' ? 'Focus Time' : mode === 'shortBreak' ? 'Short Break' : 'Long Break'}
+            </span>
+          </div>
+        </div>
+        
+        <div className="flex space-x-4 mt-6">
+          {isRunning ? (
+            <button
+              onClick={pauseTimer}
+              className="p-3 bg-white dark:bg-gray-700 rounded-full shadow hover:shadow-md transition-shadow text-gray-700 dark:text-gray-300"
+            >
+              <Pause className="w-6 h-6" />
+            </button>
+          ) : (
+            <button
+              onClick={startTimer}
+              className="p-3 bg-white dark:bg-gray-700 rounded-full shadow hover:shadow-md transition-shadow text-gray-700 dark:text-gray-300"
+            >
+              <Play className="w-6 h-6" />
+            </button>
+          )}
+          
+          <button
+            onClick={resetTimer}
+            className="p-3 bg-white dark:bg-gray-700 rounded-full shadow hover:shadow-md transition-shadow text-gray-700 dark:text-gray-300"
+          >
+            <RotateCcw className="w-6 h-6" />
+          </button>
+        </div>
+      </div>
+      
+      {activeTask ? (
+        <div className="bg-gray-50 dark:bg-gray-700/30 p-4 rounded-md">
+          <div className="flex justify-between items-start">
+            <div>
+              <h3 className="font-medium text-gray-900 dark:text-white">Current Task</h3>
+              <p className="text-sm text-gray-600 dark:text-gray-400 mt-1 max-w-[90%]">
+                {activeTask.title}
+              </p>
+              {typeof activeTask.estimatedPomodoros === 'number' && activeTask.estimatedPomodoros > 0 && (
+                <div className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                  {activeTask.pomodorosCompleted} / {activeTask.estimatedPomodoros} pomodoros
+                </div>
+              )}
+            </div>
+            <button 
+              onClick={onClearActiveTask}
+              className="p-1 text-gray-400 hover:text-red-500 rounded-full hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
       ) : (
-        <div className="mb-4 p-3 bg-gray-50 dark:bg-gray-700/30 rounded-lg border border-gray-200 dark:border-gray-700">
-          <p className="text-sm text-gray-500 dark:text-gray-400">
-            Select a task from the list to focus on
-          </p>
+        <div className="text-center py-4 text-gray-500 dark:text-gray-400 text-sm">
+          Select a task to start tracking pomodoros
         </div>
       )}
       
-      <div className="flex justify-center space-x-2 mb-6">
-        <button
-          onClick={() => setTimerState('pomodoro')}
-          className={`px-3 py-1 rounded-md text-sm font-medium ${
-            timerState === 'pomodoro'
-              ? 'bg-primary-600 text-white'
-              : 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
-          }`}
-        >
-          Pomodoro
-        </button>
-        <button
-          onClick={() => setTimerState('shortBreak')}
-          className={`px-3 py-1 rounded-md text-sm font-medium ${
-            timerState === 'shortBreak'
-              ? 'bg-primary-600 text-white'
-              : 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
-          }`}
-        >
-          Short Break
-        </button>
-        <button
-          onClick={() => setTimerState('longBreak')}
-          className={`px-3 py-1 rounded-md text-sm font-medium ${
-            timerState === 'longBreak'
-              ? 'bg-primary-600 text-white'
-              : 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
-          }`}
-        >
-          Long Break
-        </button>
-      </div>
-      
-      <div className="relative h-64 w-64 mx-auto mb-6">
-        <div className="absolute inset-0 flex items-center justify-center">
-          <svg className="w-full h-full" viewBox="0 0 100 100">
-            {/* Background circle */}
-            <circle
-              cx="50"
-              cy="50"
-              r="45"
-              fill="none"
-              stroke="#e5e7eb"
-              strokeWidth="5"
-              className="dark:stroke-gray-700"
-            />
-            
-            {/* Progress circle */}
-            <circle
-              cx="50"
-              cy="50"
-              r="45"
-              fill="none"
-              stroke={timerState === 'pomodoro' ? '#ef4444' : timerState === 'shortBreak' ? '#10b981' : '#3b82f6'}
-              strokeWidth="5"
-              strokeDasharray="283"
-              strokeDashoffset={283 - (283 * getProgressPercentage()) / 100}
-              transform="rotate(-90 50 50)"
-              className={`transition-all duration-300 ${isRunning ? 'ease-linear' : 'ease-out'}`}
-            />
-          </svg>
-          
-          <div className="absolute inset-0 flex flex-col items-center justify-center">
-            <span className={`text-5xl font-semibold ${getTimerColor()}`}>
-              {formatTime(timeRemaining)}
-            </span>
-            <span className="text-xs uppercase text-gray-500 dark:text-gray-400 mt-2">
-              {timerState === 'pomodoro' ? 'Focus Time' : timerState === 'shortBreak' ? 'Short Break' : 'Long Break'}
-            </span>
-          </div>
-        </div>
-      </div>
-      
-      <div className="flex justify-center space-x-4">
-        {isRunning ? (
-          <button
-            onClick={pauseTimer}
-            className="p-4 rounded-full bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 transition-colors"
-          >
-            <Pause className="h-6 w-6 text-gray-700 dark:text-gray-300" />
-          </button>
-        ) : (
-          <button
-            onClick={startTimer}
-            className="p-4 rounded-full bg-primary-600 hover:bg-primary-700 text-white transition-colors"
-          >
-            <Play className="h-6 w-6" />
-          </button>
-        )}
-        
-        <button
-          onClick={resetTimer}
-          className="p-4 rounded-full bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 transition-colors"
-        >
-          <RotateCcw className="h-6 w-6 text-gray-700 dark:text-gray-300" />
-        </button>
-      </div>
-      
-      <div className="mt-6 text-center">
-        <p className="text-sm text-gray-600 dark:text-gray-400">
-          Pomodoros completed today: <span className="font-semibold">{pomodoroCount}</span>
-        </p>
+      <div className="mt-4 text-center text-sm text-gray-600 dark:text-gray-400">
+        <p>Completed today: {completedPomodoros} pomodoro{completedPomodoros !== 1 ? 's' : ''}</p>
       </div>
     </div>
   );
