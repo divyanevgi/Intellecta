@@ -129,3 +129,9 @@ export interface ProgressData {
   revisionConsistency: number;
   learningStreak: number;
 }
+
+export interface Note {
+  id: string;
+  content: string;
+  color: string;
+}
