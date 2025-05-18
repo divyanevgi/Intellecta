@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import Layout from '../../components/layout/Layout';
 import { motion } from 'framer-motion';
 import { Plus, Minus, Save, Check } from 'lucide-react';
-import useLocalStorage from '../../hooks/UseLocalStorage';
+import useLocalStorage from '../../hooks/useLocalStorage';
 
 interface Node {
   id: string;
